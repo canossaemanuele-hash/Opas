@@ -33,7 +33,11 @@
         .bg-reso { background: #fee2e2; color: #991b1b; } /* Rosso chiaro */
 
         /* Stile Badge Codice */
-        .badge-codice { background: #e0e7ff; color: #3730a3; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 11px; margin-right: 6px; display: inline-block; }
+        .badge-base { padding: 2px 8px; border-radius: 6px; font-weight: 800; font-size: 12px; margin-right: 8px; display: inline-block; border: 1px solid transparent; }
+        /* Colori dinamici per i badge */
+        .badge-new { background: #dbeafe; color: #1e40af; border-color: #bfdbfe; } /* Blu - Nuovo */
+        .badge-old { background: #ffedd5; color: #9a3412; border-color: #fed7aa; } /* Arancio - Vecchio */
+        .badge-def { background: #f3f4f6; color: #374151; border-color: #e5e7eb; } /* Grigio - Default */
 
         /* Modale */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 50; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
@@ -91,6 +95,10 @@
             <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wide">Saldi Attuali</h2>
             <button onclick="caricaDati()" class="text-blue-500 text-xs font-bold bg-blue-50 px-2 py-1 rounded-md">🔄 AGGIORNA</button>
         </div>
+        <div class="flex gap-3 mb-3 text-[10px] uppercase font-bold text-gray-400 justify-center">
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-blue-500"></span> Nuovo (n)</span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-orange-500"></span> Vecchio (v)</span>
+        </div>
         <div id="listaSaldi" class="divide-y divide-gray-100">
             <div class="text-center py-10 text-gray-400"><div class="animate-spin h-6 w-6 border-2 border-blue-500 border-t-transparent rounded-full mx-auto"></div></div>
         </div>
@@ -111,7 +119,7 @@
             <h3 class="text-sm font-bold text-blue-800 uppercase mb-3">Aggiungi Nuovo Articolo</h3>
             <div class="grid grid-cols-3 gap-2 mb-2">
                 <div class="col-span-1">
-                    <input type="text" id="newCodice" placeholder="Cod. (es. 99)" class="text-sm">
+                    <input type="text" id="newCodice" placeholder="Cod. (es. 99n)" class="text-sm">
                 </div>
                 <div class="col-span-2">
                     <input type="text" id="newNome" placeholder="Nome Articolo" class="text-sm">
@@ -198,6 +206,22 @@
             }
         }
 
+        // --- FUNZIONI DI UTILITÀ VISIVA ---
+        function getBadgeClass(codice) {
+            // Logica: se finisce con 'n' o 'N' è nuovo, con 'v' o 'V' è vecchio
+            const c = codice.toLowerCase();
+            if (c.endsWith('n')) return 'badge-new';
+            if (c.endsWith('v')) return 'badge-old';
+            return 'badge-def';
+        }
+        
+        function getEmoji(codice) {
+             const c = codice.toLowerCase();
+             if (c.endsWith('n')) return '🔵';
+             if (c.endsWith('v')) return '🔸';
+             return '📦';
+        }
+
         // 1. CARICA ARTICOLI
         async function caricaArticoli() {
             const { data, error } = await client.from('articoli_magazzino').select('*').order('codice');
@@ -212,7 +236,9 @@
                     mappaArticoli[art.codice] = art.nome;
                     const opt = document.createElement('option');
                     opt.value = art.codice;
-                    opt.text = `${art.codice} - ${art.nome}`;
+                    // AGGIUNTA EMOJI NEL MENU A TENDINA
+                    const emoji = getEmoji(art.codice);
+                    opt.text = `${emoji} ${art.codice} - ${art.nome}`;
                     select.appendChild(opt);
                 });
             }
@@ -250,7 +276,7 @@
             btn.disabled = false;
         }
 
-        // 3. CARICA SALDI (RIEPILOGO)
+        // 3. CARICA SALDI (RIEPILOGO) - AGGIORNATO CON COLORI
         async function caricaDati() {
             const divLista = document.getElementById('listaSaldi');
             divLista.style.opacity = "0.5";
@@ -276,6 +302,9 @@
             codiciOrdinati.forEach(cod => {
                 const totale = saldi[cod];
                 const nome = mappaArticoli[cod] || `<span class='text-red-400 italic'>(${cod} Archiviato)</span>`;
+                
+                // Determina il colore del badge (Nuovo vs Vecchio)
+                const badgeClass = getBadgeClass(cod);
 
                 let colorClass = "text-gray-400"; 
                 let textVal = "0";
@@ -291,10 +320,10 @@
                 const html = `
                 <div class="flex justify-between items-center py-3">
                     <div class="flex-1 pr-2">
-                        <div class="flex items-center">
-                            <span class="badge-codice">${cod}</span>
+                        <div class="flex items-center mb-1">
+                            <span class="badge-base ${badgeClass}">${cod}</span>
                         </div>
-                        <div class="text-gray-800 text-sm leading-tight mt-1">${nome}</div>
+                        <div class="text-gray-800 text-sm leading-tight">${nome}</div>
                     </div>
                     <div class="${colorClass} text-lg font-mono text-right w-16">${textVal}</div>
                 </div>`;
@@ -332,6 +361,9 @@
                 const isConsegna = m.tipo === 'CONSEGNA';
                 const tagClass = isConsegna ? 'bg-consegna' : 'bg-reso';
                 
+                // Aggiungiamo il badge colorato anche qui per chiarezza
+                const badgeClass = getBadgeClass(m.codice_articolo);
+                
                 const html = `
                 <div class="history-item">
                     <div class="flex flex-col items-center justify-center w-14 border-r border-gray-100 pr-2 mr-3">
@@ -339,8 +371,8 @@
                         <span class="${tagClass} tag-tipo mt-1 text-[9px]">${isConsegna ? 'CONS' : 'RESO'}</span>
                     </div>
                     <div class="flex-1 overflow-hidden">
-                        <div class="flex items-center">
-                             <span class="text-[10px] text-gray-400 font-bold mr-2">${m.codice_articolo}</span>
+                        <div class="flex items-center mb-0.5">
+                             <span class="badge-base ${badgeClass} text-[10px] py-0.5 px-1.5">${m.codice_articolo}</span>
                         </div>
                         <p class="text-sm text-gray-800 truncate font-medium leading-tight">${nomeArticolo}</p>
                     </div>
@@ -362,8 +394,7 @@
             if(!error) { await caricaDati(); await caricaStorico(); }
         }
 
-        // --- 5. GESTIONE ARTICOLI (AGGIUNGI, RIMUOVI, MODIFICA) ---
-
+        // --- 5. GESTIONE ARTICOLI ---
         async function caricaListaGestioneArticoli() {
             const div = document.getElementById('listaGestioneArticoli');
             div.innerHTML = '<div class="text-center py-4 text-gray-400">Caricamento...</div>';
@@ -373,13 +404,14 @@
 
             div.innerHTML = "";
             data.forEach(art => {
-                // Notare l'escape delle virgolette per evitare errori JS nel nome
                 const nomeSafe = art.nome.replace(/'/g, "\\'"); 
+                const badgeClass = getBadgeClass(art.codice); // Anche qui!
+
                 const html = `
                 <div class="flex justify-between items-center py-3">
                     <div class="flex-1 overflow-hidden">
-                        <span class="badge-codice text-sm">${art.codice}</span>
-                        <span class="text-gray-800 text-sm font-medium truncate block">${art.nome}</span>
+                        <span class="badge-base ${badgeClass} text-sm">${art.codice}</span>
+                        <span class="text-gray-800 text-sm font-medium truncate block mt-1">${art.nome}</span>
                     </div>
                     <div class="flex gap-1">
                         <button onclick="apriModalModifica(${art.id}, '${art.codice}', '${nomeSafe}')" class="text-blue-500 bg-blue-50 p-2 rounded-lg">
@@ -421,7 +453,7 @@
             }
         }
 
-        // --- FUNZIONI MODIFICA (MODALE) ---
+        // --- FUNZIONI MODIFICA ---
         function apriModalModifica(id, oldCod, oldNome) {
             document.getElementById('modalEdit').classList.remove('hidden');
             document.getElementById('editId').value = id;
@@ -446,7 +478,6 @@
             btn.innerHTML = "Salvataggio...";
             btn.disabled = true;
 
-            // 1. Aggiorna l'Articolo nel listino
             const { error } = await client
                 .from('articoli_magazzino')
                 .update({ codice: newCod, nome: newNome })
@@ -459,24 +490,20 @@
                 return;
             }
 
-            // 2. Se il codice è cambiato, dobbiamo aggiornare TUTTI i vecchi movimenti
-            // (Aggiornamento a cascata manuale)
             if (newCod !== oldCod) {
                 const { error: errMov } = await client
                     .from('movimenti_magazzino')
                     .update({ codice_articolo: newCod })
                     .eq('codice_articolo', oldCod);
                 
-                if(errMov) alert("Attenzione: Articolo aggiornato ma errore nell'aggiornamento storico: " + errMov.message);
+                if(errMov) alert("Errore aggiornamento storico: " + errMov.message);
             }
 
-            // 3. Finito
-            alert("Modifica salvata con successo!");
+            alert("Modifica salvata!");
             chiudiModal();
             btn.innerHTML = "Salva";
             btn.disabled = false;
 
-            // Ricarica tutto
             await caricaArticoli();
             await caricaListaGestioneArticoli();
             await caricaDati();
