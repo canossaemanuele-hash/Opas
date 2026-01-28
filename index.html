@@ -18,6 +18,7 @@
         .btn:active { transform: scale(0.96); }
         .btn-consegna { background-color: #10b981; color: white; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3); }
         .btn-reso { background-color: #ef4444; color: white; box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.3); }
+        .btn-add { background-color: #3b82f6; color: white; box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3); }
         
         /* Input ottimizzati per dita */
         input, select { height: 50px; font-size: 16px; border-radius: 10px; border: 1px solid #e5e7eb; background: #f9fafb; width: 100%; padding: 0 12px; outline: none; }
@@ -34,7 +35,7 @@
         .badge-codice { background: #e0e7ff; color: #3730a3; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 11px; margin-right: 6px; display: inline-block; }
     </style>
 </head>
-<body class="p-3 max-w-lg mx-auto pb-20">
+<body class="p-3 max-w-lg mx-auto pb-24">
 
     <div class="flex justify-between items-center mb-4 mt-2 px-1">
         <div>
@@ -46,7 +47,7 @@
         </div>
     </div>
 
-    <div class="card">
+    <div id="boxInserimento" class="card">
         <div class="grid grid-cols-2 gap-3 mb-3">
             <div>
                 <label class="text-xs font-bold text-gray-500 ml-1 uppercase">Data</label>
@@ -75,9 +76,10 @@
         </div>
     </div>
 
-    <div class="flex gap-4 border-b border-gray-300 mb-4 px-2">
-        <button onclick="cambiaTab('riepilogo')" id="btnTabRiepilogo" class="pb-2 border-b-2 border-blue-600 font-bold text-blue-600 text-sm">SITUAZIONE</button>
-        <button onclick="cambiaTab('storico')" id="btnTabStorico" class="pb-2 border-b-2 border-transparent text-gray-500 font-bold text-sm">TUTTI I MOVIMENTI</button>
+    <div class="flex gap-2 border-b border-gray-300 mb-4 px-1">
+        <button onclick="cambiaTab('riepilogo')" id="btnTabRiepilogo" class="flex-1 pb-2 border-b-2 border-blue-600 font-bold text-blue-600 text-xs text-center">SITUAZIONE</button>
+        <button onclick="cambiaTab('storico')" id="btnTabStorico" class="flex-1 pb-2 border-b-2 border-transparent text-gray-500 font-bold text-xs text-center">STORICO</button>
+        <button onclick="cambiaTab('articoli')" id="btnTabArticoli" class="flex-1 pb-2 border-b-2 border-transparent text-gray-500 font-bold text-xs text-center">ARTICOLI</button>
     </div>
 
     <div id="viewRiepilogo" class="card min-h-[300px]">
@@ -99,6 +101,30 @@
             </div>
     </div>
 
+    <div id="viewArticoli" class="hidden">
+        
+        <div class="card bg-blue-50 border border-blue-100">
+            <h3 class="text-sm font-bold text-blue-800 uppercase mb-3">Aggiungi Nuovo Articolo</h3>
+            <div class="grid grid-cols-3 gap-2 mb-2">
+                <div class="col-span-1">
+                    <input type="text" id="newCodice" placeholder="Codice (es. 99)" class="text-sm">
+                </div>
+                <div class="col-span-2">
+                    <input type="text" id="newNome" placeholder="Nome Articolo" class="text-sm">
+                </div>
+            </div>
+            <button onclick="aggiungiArticolo()" class="btn btn-add py-3 text-sm">
+                <i data-lucide="plus-circle" class="w-4 h-4"></i> AGGIUNGI ALLA LISTA
+            </button>
+        </div>
+
+        <div class="card">
+            <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wide mb-2">Articoli in Memoria</h2>
+            <div id="listaGestioneArticoli" class="divide-y divide-gray-100">
+                </div>
+        </div>
+    </div>
+
     <script>
         // --- 🔴 CONFIGURAZIONE SUPABASE 🔴 ---
         const SUPABASE_URL = "https://sfktcyqtqfrdhgxokuvd.supabase.co";
@@ -112,33 +138,53 @@
             lucide.createIcons();
             document.getElementById('dataOp').valueAsDate = new Date();
             
-            await caricaArticoli();
-            await caricaDati();     // Carica i saldi
-            await caricaStorico();  // Carica la lista movimenti
+            await caricaArticoli(); // Carica select e mappa
+            await caricaDati();     // Carica saldi
+            await caricaStorico();  // Carica storico
+            // Nota: La lista "Gestione Articoli" viene caricata solo se si apre la tab, o dopo aggiornamenti
         });
 
         // GESTIONE TAB
         function cambiaTab(tab) {
-            if(tab === 'riepilogo') {
-                document.getElementById('viewRiepilogo').classList.remove('hidden');
-                document.getElementById('viewStorico').classList.add('hidden');
-                document.getElementById('btnTabRiepilogo').className = "pb-2 border-b-2 border-blue-600 font-bold text-blue-600 text-sm";
-                document.getElementById('btnTabStorico').className = "pb-2 border-b-2 border-transparent text-gray-500 font-bold text-sm";
+            // Nascondi tutto
+            document.getElementById('viewRiepilogo').classList.add('hidden');
+            document.getElementById('viewStorico').classList.add('hidden');
+            document.getElementById('viewArticoli').classList.add('hidden');
+            
+            // Reset bottoni
+            const btnClassInactive = "flex-1 pb-2 border-b-2 border-transparent text-gray-500 font-bold text-xs text-center";
+            const btnClassActive = "flex-1 pb-2 border-b-2 border-blue-600 font-bold text-blue-600 text-xs text-center";
+            
+            document.getElementById('btnTabRiepilogo').className = btnClassInactive;
+            document.getElementById('btnTabStorico').className = btnClassInactive;
+            document.getElementById('btnTabArticoli').className = btnClassInactive;
+
+            // Mostra box inserimento solo se NON siamo in gestione articoli
+            if(tab === 'articoli') {
+                document.getElementById('boxInserimento').classList.add('hidden');
+                document.getElementById('viewArticoli').classList.remove('hidden');
+                document.getElementById('btnTabArticoli').className = btnClassActive;
+                caricaListaGestioneArticoli(); // Carica la lista per la gestione
             } else {
-                document.getElementById('viewRiepilogo').classList.add('hidden');
-                document.getElementById('viewStorico').classList.remove('hidden');
-                document.getElementById('btnTabRiepilogo').className = "pb-2 border-b-2 border-transparent text-gray-500 font-bold text-sm";
-                document.getElementById('btnTabStorico').className = "pb-2 border-b-2 border-blue-600 font-bold text-blue-600 text-sm";
+                document.getElementById('boxInserimento').classList.remove('hidden');
+                if(tab === 'riepilogo') {
+                    document.getElementById('viewRiepilogo').classList.remove('hidden');
+                    document.getElementById('btnTabRiepilogo').className = btnClassActive;
+                } else {
+                    document.getElementById('viewStorico').classList.remove('hidden');
+                    document.getElementById('btnTabStorico').className = btnClassActive;
+                }
             }
         }
 
-        // 1. CARICA ARTICOLI
+        // 1. CARICA ARTICOLI (Per Select e Mappa)
         async function caricaArticoli() {
             const { data, error } = await client.from('articoli_magazzino').select('*').order('codice');
             if(error) return alert("Errore DB!");
 
             const select = document.getElementById('articoloSelect');
             select.innerHTML = '<option value="">-- Seleziona Articolo --</option>';
+            mappaArticoli = {}; // Reset mappa
 
             if (data) {
                 data.forEach(art => {
@@ -159,10 +205,9 @@
 
             if(!codice || !qta) return alert("Inserisci Articolo e Quantità!");
 
-            // Feedback visivo immediato
             const btn = event.currentTarget;
             const originalText = btn.innerHTML;
-            btn.innerHTML = "⏳ Attendi...";
+            btn.innerHTML = "⏳";
             btn.disabled = true;
 
             const { error } = await client.from('movimenti_magazzino').insert([{
@@ -193,11 +238,15 @@
             if(error) return;
 
             let saldi = {};
+            // Inizializza con gli articoli ATTUALI
             for(let cod in mappaArticoli) { saldi[cod] = 0; }
 
             if(movimenti) {
                 movimenti.forEach(m => {
+                    // Se un articolo è stato cancellato dalla lista, lo inizializziamo qui
+                    // così appare comunque nel riepilogo se ha debiti
                     if(saldi[m.codice_articolo] === undefined) saldi[m.codice_articolo] = 0;
+                    
                     if(m.tipo === 'CONSEGNA') saldi[m.codice_articolo] += m.quantita;
                     else saldi[m.codice_articolo] -= m.quantita;
                 });
@@ -209,18 +258,18 @@
             let haDati = false;
             codiciOrdinati.forEach(cod => {
                 const totale = saldi[cod];
-                const nome = mappaArticoli[cod] || "???";
+                // Se l'articolo è stato cancellato, usiamo il codice o un placeholder
+                const nome = mappaArticoli[cod] || `<span class='text-red-400 italic'>(Articolo ${cod} Archiviato)</span>`;
 
-                // Mostra tutto, evidenziando i debiti
-                let colorClass = "text-gray-400"; // Neutro
+                let colorClass = "text-gray-400"; 
                 let textVal = "0";
 
                 if(totale > 0) {
                     colorClass = "text-red-600 font-bold";
-                    textVal = `-${totale}`; // Debito
+                    textVal = `-${totale}`; 
                 } else if (totale < 0) {
                     colorClass = "text-blue-600 font-bold";
-                    textVal = `+${Math.abs(totale)}`; // Credito
+                    textVal = `+${Math.abs(totale)}`; 
                 }
 
                 const html = `
@@ -241,50 +290,44 @@
             divLista.style.opacity = "1";
         }
 
-        // 4. CARICA STORICO COMPLETO (MODIFICATO: SENZA LIMITI)
+        // 4. CARICA STORICO COMPLETO
         async function caricaStorico() {
             const divStorico = document.getElementById('listaStorico');
             
-            // Scarica TUTTO ordinato per DATA OPERAZIONE (decrescente) e poi per DATA INSERIMENTO
             const { data, error } = await client
                 .from('movimenti_magazzino')
                 .select('*')
                 .order('data_operazione', { ascending: false })
                 .order('created_at', { ascending: false });
 
-            if(error) { console.error(error); return; }
+            if(error) return;
 
             divStorico.innerHTML = "";
             document.getElementById('contatoreMovimenti').textContent = `${data.length} mov.`;
 
             if(data.length === 0) {
-                divStorico.innerHTML = '<div class="text-center py-6 text-gray-400 text-sm">Nessun movimento registrato.</div>';
+                divStorico.innerHTML = '<div class="text-center py-6 text-gray-400 text-sm">Nessun movimento.</div>';
                 return;
             }
 
             data.forEach(m => {
-                const nomeArticolo = mappaArticoli[m.codice_articolo] || m.codice_articolo;
-                // Formatta la data: es. 28/01/2026
+                const nomeArticolo = mappaArticoli[m.codice_articolo] || `(${m.codice_articolo})`;
                 const dataOp = new Date(m.data_operazione).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' });
-                
                 const isConsegna = m.tipo === 'CONSEGNA';
                 const tagClass = isConsegna ? 'bg-consegna' : 'bg-reso';
                 
-                // Card singola per lo storico
                 const html = `
                 <div class="history-item">
                     <div class="flex flex-col items-center justify-center w-14 border-r border-gray-100 pr-2 mr-3">
                         <span class="text-gray-500 font-bold text-xs whitespace-nowrap">${dataOp}</span>
                         <span class="${tagClass} tag-tipo mt-1 text-[9px]">${isConsegna ? 'CONS' : 'RESO'}</span>
                     </div>
-
                     <div class="flex-1 overflow-hidden">
                         <div class="flex items-center">
                              <span class="text-[10px] text-gray-400 font-bold mr-2">${m.codice_articolo}</span>
                         </div>
                         <p class="text-sm text-gray-800 truncate font-medium leading-tight">${nomeArticolo}</p>
                     </div>
-
                     <div class="flex items-center gap-2 pl-2">
                         <span class="text-base font-bold text-gray-700 w-8 text-right">${m.quantita}</span>
                         <button onclick="eliminaMovimento(${m.id})" class="text-gray-300 hover:text-red-500 p-2">
@@ -292,24 +335,80 @@
                         </button>
                     </div>
                 </div>`;
-                
                 divStorico.insertAdjacentHTML('beforeend', html);
             });
-            lucide.createIcons(); // Aggiorna icone
+            lucide.createIcons();
         }
 
-        // 5. ELIMINA MOVIMENTO
         async function eliminaMovimento(id) {
-            if(!confirm("Vuoi davvero cancellare questa riga?")) return;
-
+            if(!confirm("Cancellare questo movimento?")) return;
             const { error } = await client.from('movimenti_magazzino').delete().eq('id', id);
+            if(!error) { await caricaDati(); await caricaStorico(); }
+        }
+
+        // --- 5. FUNZIONI NUOVA GESTIONE ARTICOLI ---
+
+        async function caricaListaGestioneArticoli() {
+            const div = document.getElementById('listaGestioneArticoli');
+            div.innerHTML = '<div class="text-center py-4 text-gray-400">Caricamento...</div>';
             
-            if(error) alert("Errore eliminazione");
-            else {
-                await caricaDati();
-                await caricaStorico();
+            // Scarichiamo di nuovo per essere sicuri
+            const { data, error } = await client.from('articoli_magazzino').select('*').order('codice');
+            if(error) return;
+
+            div.innerHTML = "";
+            data.forEach(art => {
+                const html = `
+                <div class="flex justify-between items-center py-3">
+                    <div>
+                        <span class="badge-codice text-sm">${art.codice}</span>
+                        <span class="text-gray-800 text-sm font-medium">${art.nome}</span>
+                    </div>
+                    <button onclick="rimuoviArticolo(${art.id}, '${art.codice}')" class="text-red-300 hover:text-red-600 p-2 bg-red-50 rounded-lg">
+                        <i data-lucide="trash" class="w-4 h-4"></i>
+                    </button>
+                </div>`;
+                div.insertAdjacentHTML('beforeend', html);
+            });
+            lucide.createIcons();
+        }
+
+        async function aggiungiArticolo() {
+            const cod = document.getElementById('newCodice').value.trim();
+            const nom = document.getElementById('newNome').value.trim();
+
+            if(!cod || !nom) return alert("Inserisci Codice e Nome!");
+
+            const { error } = await client.from('articoli_magazzino').insert([{ codice: cod, nome: nom }]);
+
+            if(error) {
+                alert("Errore: " + error.message + "\n(Forse il codice esiste già?)");
+            } else {
+                alert("Articolo aggiunto!");
+                document.getElementById('newCodice').value = "";
+                document.getElementById('newNome').value = "";
+                
+                // Aggiorna tutto
+                await caricaArticoli(); 
+                await caricaListaGestioneArticoli();
             }
         }
+
+        async function rimuoviArticolo(id, codice) {
+            if(!confirm(`Sei sicura di voler eliminare l'articolo "${codice}" dalla lista?\n\nNOTA: I vecchi movimenti rimarranno salvati, ma non potrai più selezionarlo per quelli nuovi.`)) return;
+
+            const { error } = await client.from('articoli_magazzino').delete().eq('id', id);
+
+            if(error) {
+                alert("Errore: " + error.message);
+            } else {
+                // Aggiorna tutto
+                await caricaArticoli();
+                await caricaListaGestioneArticoli();
+                await caricaDati(); // Aggiorna riepilogo (potrebbe cambiare nome in "Archiviato")
+            }
+        }
+
     </script>
 </body>
 </html>
