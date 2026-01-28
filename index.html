@@ -9,8 +9,6 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         body { background-color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
-        
-        /* Stile Card Generale */
         .card { background: white; border-radius: 16px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 16px; }
         
         /* Bottoni */
@@ -21,25 +19,20 @@
         .btn-add { background-color: #3b82f6; color: white; box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3); }
         .btn-save { background-color: #2563eb; color: white; }
         
-        /* Input ottimizzati per dita */
         input, select { height: 50px; font-size: 16px; border-radius: 10px; border: 1px solid #e5e7eb; background: #f9fafb; width: 100%; padding: 0 12px; outline: none; }
         input:focus, select:focus { border-color: #3b82f6; ring: 2px; }
 
-        /* Stile Storico Movimenti */
         .history-item { padding: 12px 0; border-bottom: 1px solid #f3f4f6; display: flex; align-items: center; justify-content: space-between; }
         .history-item:last-child { border-bottom: none; }
         .tag-tipo { font-size: 11px; font-weight: 800; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .bg-consegna { background: #d1fae5; color: #065f46; } /* Verde chiaro */
-        .bg-reso { background: #fee2e2; color: #991b1b; } /* Rosso chiaro */
+        .bg-consegna { background: #d1fae5; color: #065f46; } 
+        .bg-reso { background: #fee2e2; color: #991b1b; } 
 
-        /* Stile Badge Codice */
         .badge-base { padding: 2px 8px; border-radius: 6px; font-weight: 800; font-size: 12px; margin-right: 8px; display: inline-block; border: 1px solid transparent; }
-        /* Colori dinamici per i badge */
-        .badge-new { background: #dbeafe; color: #1e40af; border-color: #bfdbfe; } /* Blu - Nuovo */
-        .badge-old { background: #ffedd5; color: #9a3412; border-color: #fed7aa; } /* Arancio - Vecchio */
-        .badge-def { background: #f3f4f6; color: #374151; border-color: #e5e7eb; } /* Grigio - Default */
+        .badge-new { background: #dbeafe; color: #1e40af; border-color: #bfdbfe; }
+        .badge-old { background: #ffedd5; color: #9a3412; border-color: #fed7aa; }
+        .badge-def { background: #f3f4f6; color: #374151; border-color: #e5e7eb; }
 
-        /* Modale */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 50; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
     </style>
 </head>
@@ -93,7 +86,14 @@
     <div id="viewRiepilogo" class="card min-h-[300px]">
         <div class="flex justify-between items-center mb-2">
             <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wide">Saldi Attuali</h2>
-            <button onclick="caricaDati()" class="text-blue-500 text-xs font-bold bg-blue-50 px-2 py-1 rounded-md">🔄 AGGIORNA</button>
+            <div class="flex gap-2">
+                <button onclick="caricaDati()" class="text-blue-500 bg-blue-50 p-2 rounded-lg">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                </button>
+                <button onclick="condividiReport()" class="text-green-600 bg-green-50 p-2 rounded-lg font-bold flex items-center gap-1 text-xs">
+                    <i data-lucide="share-2" class="w-4 h-4"></i> INVIA
+                </button>
+            </div>
         </div>
         <div class="flex gap-3 mb-3 text-[10px] uppercase font-bold text-gray-400 justify-center">
             <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-blue-500"></span> Nuovo (n)</span>
@@ -109,112 +109,87 @@
             <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wide">Storico Completo</h2>
             <span class="text-xs text-gray-400" id="contatoreMovimenti"></span>
         </div>
-        <div id="listaStorico" class="divide-y divide-gray-100">
-            </div>
+        <div id="listaStorico" class="divide-y divide-gray-100"></div>
     </div>
 
     <div id="viewArticoli" class="hidden">
-        
         <div class="card bg-blue-50 border border-blue-100">
             <h3 class="text-sm font-bold text-blue-800 uppercase mb-3">Aggiungi Nuovo Articolo</h3>
             <div class="grid grid-cols-3 gap-2 mb-2">
-                <div class="col-span-1">
-                    <input type="text" id="newCodice" placeholder="Cod. (es. 99n)" class="text-sm">
-                </div>
-                <div class="col-span-2">
-                    <input type="text" id="newNome" placeholder="Nome Articolo" class="text-sm">
-                </div>
+                <div class="col-span-1"><input type="text" id="newCodice" placeholder="Cod. (es. 99n)" class="text-sm"></div>
+                <div class="col-span-2"><input type="text" id="newNome" placeholder="Nome Articolo" class="text-sm"></div>
             </div>
-            <button onclick="aggiungiArticolo()" class="btn btn-add py-3 text-sm">
-                <i data-lucide="plus-circle" class="w-4 h-4"></i> AGGIUNGI ALLA LISTA
-            </button>
+            <button onclick="aggiungiArticolo()" class="btn btn-add py-3 text-sm"><i data-lucide="plus-circle" class="w-4 h-4"></i> AGGIUNGI</button>
         </div>
-
         <div class="card">
             <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wide mb-2">Modifica / Elimina</h2>
-            <div id="listaGestioneArticoli" class="divide-y divide-gray-100">
-                </div>
+            <div id="listaGestioneArticoli" class="divide-y divide-gray-100"></div>
         </div>
     </div>
 
     <div id="modalEdit" class="modal-overlay hidden">
         <div class="bg-white rounded-2xl p-6 w-[90%] max-w-sm shadow-2xl">
             <h3 class="text-lg font-bold text-gray-800 mb-4">Modifica Articolo</h3>
-            
             <input type="hidden" id="editId">
-            <input type="hidden" id="editOldCodice"> <label class="text-xs font-bold text-gray-500 uppercase">Codice</label>
+            <input type="hidden" id="editOldCodice">
+            <label class="text-xs font-bold text-gray-500 uppercase">Codice</label>
             <input type="text" id="editCodice" class="mb-4 font-mono font-bold text-blue-800">
-
             <label class="text-xs font-bold text-gray-500 uppercase">Nome</label>
             <input type="text" id="editNome" class="mb-6">
-
             <div class="grid grid-cols-2 gap-3">
                 <button onclick="chiudiModal()" class="btn bg-gray-200 text-gray-700">Annulla</button>
                 <button onclick="salvaModificaArticolo()" class="btn btn-save">Salva</button>
             </div>
-            <p class="text-[10px] text-gray-400 mt-4 text-center leading-tight">
-                ⚠️ Se cambi il Codice, verranno aggiornati automaticamente anche tutti i movimenti passati.
-            </p>
         </div>
     </div>
 
     <script>
-        // --- 🔴 CONFIGURAZIONE SUPABASE 🔴 ---
         const SUPABASE_URL = "https://sfktcyqtqfrdhgxokuvd.supabase.co";
         const SUPABASE_KEY = "sb_publishable_wSVYfrqCOI1dE9rvSrZhng_CNdP8YHw";
-        
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         let mappaArticoli = {}; 
 
-        // INIZIALIZZAZIONE
         document.addEventListener('DOMContentLoaded', async () => {
             lucide.createIcons();
             document.getElementById('dataOp').valueAsDate = new Date();
-            
-            await caricaArticoli(); 
-            await caricaDati();     
-            await caricaStorico();  
+            await caricaArticoli(); await caricaDati(); await caricaStorico();  
         });
 
-        // GESTIONE TAB
         function cambiaTab(tab) {
             document.getElementById('viewRiepilogo').classList.add('hidden');
             document.getElementById('viewStorico').classList.add('hidden');
             document.getElementById('viewArticoli').classList.add('hidden');
             
-            const btnClassInactive = "flex-1 pb-2 border-b-2 border-transparent text-gray-500 font-bold text-xs text-center";
-            const btnClassActive = "flex-1 pb-2 border-b-2 border-blue-600 font-bold text-blue-600 text-xs text-center";
+            const btnInactive = "flex-1 pb-2 border-b-2 border-transparent text-gray-500 font-bold text-xs text-center";
+            const btnActive = "flex-1 pb-2 border-b-2 border-blue-600 font-bold text-blue-600 text-xs text-center";
             
-            document.getElementById('btnTabRiepilogo').className = btnClassInactive;
-            document.getElementById('btnTabStorico').className = btnClassInactive;
-            document.getElementById('btnTabArticoli').className = btnClassInactive;
+            document.getElementById('btnTabRiepilogo').className = btnInactive;
+            document.getElementById('btnTabStorico').className = btnInactive;
+            document.getElementById('btnTabArticoli').className = btnInactive;
 
             if(tab === 'articoli') {
                 document.getElementById('boxInserimento').classList.add('hidden');
                 document.getElementById('viewArticoli').classList.remove('hidden');
-                document.getElementById('btnTabArticoli').className = btnClassActive;
+                document.getElementById('btnTabArticoli').className = btnActive;
                 caricaListaGestioneArticoli(); 
             } else {
                 document.getElementById('boxInserimento').classList.remove('hidden');
                 if(tab === 'riepilogo') {
                     document.getElementById('viewRiepilogo').classList.remove('hidden');
-                    document.getElementById('btnTabRiepilogo').className = btnClassActive;
+                    document.getElementById('btnTabRiepilogo').className = btnActive;
                 } else {
                     document.getElementById('viewStorico').classList.remove('hidden');
-                    document.getElementById('btnTabStorico').className = btnClassActive;
+                    document.getElementById('btnTabStorico').className = btnActive;
                 }
             }
         }
 
-        // --- FUNZIONI DI UTILITÀ VISIVA ---
         function getBadgeClass(codice) {
-            // Logica: se finisce con 'n' o 'N' è nuovo, con 'v' o 'V' è vecchio
             const c = codice.toLowerCase();
             if (c.endsWith('n')) return 'badge-new';
             if (c.endsWith('v')) return 'badge-old';
             return 'badge-def';
         }
-        
         function getEmoji(codice) {
              const c = codice.toLowerCase();
              if (c.endsWith('n')) return '🔵';
@@ -222,34 +197,27 @@
              return '📦';
         }
 
-        // 1. CARICA ARTICOLI
         async function caricaArticoli() {
             const { data, error } = await client.from('articoli_magazzino').select('*').order('codice');
             if(error) return alert("Errore DB!");
-
             const select = document.getElementById('articoloSelect');
             select.innerHTML = '<option value="">-- Seleziona Articolo --</option>';
             mappaArticoli = {}; 
-
             if (data) {
                 data.forEach(art => {
                     mappaArticoli[art.codice] = art.nome;
                     const opt = document.createElement('option');
                     opt.value = art.codice;
-                    // AGGIUNTA EMOJI NEL MENU A TENDINA
-                    const emoji = getEmoji(art.codice);
-                    opt.text = `${emoji} ${art.codice} - ${art.nome}`;
+                    opt.text = `${getEmoji(art.codice)} ${art.codice} - ${art.nome}`;
                     select.appendChild(opt);
                 });
             }
         }
 
-        // 2. SALVA MOVIMENTO
         async function salvaMovimento(tipo) {
             const dataOp = document.getElementById('dataOp').value;
             const codice = document.getElementById('articoloSelect').value;
             const qta = document.getElementById('quantita').value;
-
             if(!codice || !qta) return alert("Inserisci Articolo e Quantità!");
 
             const btn = event.currentTarget;
@@ -258,29 +226,20 @@
             btn.disabled = true;
 
             const { error } = await client.from('movimenti_magazzino').insert([{
-                data_operazione: dataOp,
-                tipo: tipo,
-                codice_articolo: codice,
-                quantita: parseInt(qta)
+                data_operazione: dataOp, tipo: tipo, codice_articolo: codice, quantita: parseInt(qta)
             }]);
 
-            if(error) {
-                alert("Errore: " + error.message);
-            } else {
+            if(error) alert("Errore: " + error.message);
+            else {
                 document.getElementById('quantita').value = "";
-                await caricaDati();
-                await caricaStorico();
-                alert("Salvato! ✅");
+                await caricaDati(); await caricaStorico(); alert("Salvato! ✅");
             }
-            btn.innerHTML = originalText;
-            btn.disabled = false;
+            btn.innerHTML = originalText; btn.disabled = false;
         }
 
-        // 3. CARICA SALDI (RIEPILOGO) - AGGIORNATO CON COLORI
         async function caricaDati() {
             const divLista = document.getElementById('listaSaldi');
             divLista.style.opacity = "0.5";
-            
             const { data: movimenti, error } = await client.from('movimenti_magazzino').select('*');
             if(error) return;
 
@@ -297,32 +256,20 @@
 
             divLista.innerHTML = "";
             const codiciOrdinati = Object.keys(saldi).sort();
-
             let haDati = false;
+
             codiciOrdinati.forEach(cod => {
                 const totale = saldi[cod];
                 const nome = mappaArticoli[cod] || `<span class='text-red-400 italic'>(${cod} Archiviato)</span>`;
-                
-                // Determina il colore del badge (Nuovo vs Vecchio)
                 const badgeClass = getBadgeClass(cod);
-
-                let colorClass = "text-gray-400"; 
-                let textVal = "0";
-
-                if(totale > 0) {
-                    colorClass = "text-red-600 font-bold";
-                    textVal = `-${totale}`; 
-                } else if (totale < 0) {
-                    colorClass = "text-blue-600 font-bold";
-                    textVal = `+${Math.abs(totale)}`; 
-                }
+                let colorClass = "text-gray-400"; let textVal = "0";
+                if(totale > 0) { colorClass = "text-red-600 font-bold"; textVal = `-${totale}`; } 
+                else if (totale < 0) { colorClass = "text-blue-600 font-bold"; textVal = `+${Math.abs(totale)}`; }
 
                 const html = `
                 <div class="flex justify-between items-center py-3">
                     <div class="flex-1 pr-2">
-                        <div class="flex items-center mb-1">
-                            <span class="badge-base ${badgeClass}">${cod}</span>
-                        </div>
+                        <div class="flex items-center mb-1"><span class="badge-base ${badgeClass}">${cod}</span></div>
                         <div class="text-gray-800 text-sm leading-tight">${nome}</div>
                     </div>
                     <div class="${colorClass} text-lg font-mono text-right w-16">${textVal}</div>
@@ -330,38 +277,24 @@
                 divLista.insertAdjacentHTML('beforeend', html);
                 haDati = true;
             });
-
             if(!haDati) divLista.innerHTML = '<div class="text-center py-4 text-gray-400">Nessun dato.</div>';
             divLista.style.opacity = "1";
         }
 
-        // 4. CARICA STORICO COMPLETO
         async function caricaStorico() {
             const divStorico = document.getElementById('listaStorico');
-            
-            const { data, error } = await client
-                .from('movimenti_magazzino')
-                .select('*')
-                .order('data_operazione', { ascending: false })
-                .order('created_at', { ascending: false });
-
+            const { data, error } = await client.from('movimenti_magazzino').select('*').order('data_operazione', { ascending: false }).order('created_at', { ascending: false });
             if(error) return;
 
             divStorico.innerHTML = "";
             document.getElementById('contatoreMovimenti').textContent = `${data.length} mov.`;
-
-            if(data.length === 0) {
-                divStorico.innerHTML = '<div class="text-center py-6 text-gray-400 text-sm">Nessun movimento.</div>';
-                return;
-            }
+            if(data.length === 0) { divStorico.innerHTML = '<div class="text-center py-6 text-gray-400 text-sm">Nessun movimento.</div>'; return; }
 
             data.forEach(m => {
                 const nomeArticolo = mappaArticoli[m.codice_articolo] || `(${m.codice_articolo})`;
                 const dataOp = new Date(m.data_operazione).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' });
                 const isConsegna = m.tipo === 'CONSEGNA';
                 const tagClass = isConsegna ? 'bg-consegna' : 'bg-reso';
-                
-                // Aggiungiamo il badge colorato anche qui per chiarezza
                 const badgeClass = getBadgeClass(m.codice_articolo);
                 
                 const html = `
@@ -371,16 +304,12 @@
                         <span class="${tagClass} tag-tipo mt-1 text-[9px]">${isConsegna ? 'CONS' : 'RESO'}</span>
                     </div>
                     <div class="flex-1 overflow-hidden">
-                        <div class="flex items-center mb-0.5">
-                             <span class="badge-base ${badgeClass} text-[10px] py-0.5 px-1.5">${m.codice_articolo}</span>
-                        </div>
+                        <div class="flex items-center mb-0.5"><span class="badge-base ${badgeClass} text-[10px] py-0.5 px-1.5">${m.codice_articolo}</span></div>
                         <p class="text-sm text-gray-800 truncate font-medium leading-tight">${nomeArticolo}</p>
                     </div>
                     <div class="flex items-center gap-2 pl-2">
                         <span class="text-base font-bold text-gray-700 w-8 text-right">${m.quantita}</span>
-                        <button onclick="eliminaMovimento(${m.id})" class="text-gray-300 hover:text-red-500 p-2">
-                            <i data-lucide="trash-2" class="w-4 h-4"></i>
-                        </button>
+                        <button onclick="eliminaMovimento(${m.id})" class="text-gray-300 hover:text-red-500 p-2"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                     </div>
                 </div>`;
                 divStorico.insertAdjacentHTML('beforeend', html);
@@ -394,19 +323,16 @@
             if(!error) { await caricaDati(); await caricaStorico(); }
         }
 
-        // --- 5. GESTIONE ARTICOLI ---
         async function caricaListaGestioneArticoli() {
             const div = document.getElementById('listaGestioneArticoli');
             div.innerHTML = '<div class="text-center py-4 text-gray-400">Caricamento...</div>';
-            
             const { data, error } = await client.from('articoli_magazzino').select('*').order('codice');
             if(error) return;
 
             div.innerHTML = "";
             data.forEach(art => {
                 const nomeSafe = art.nome.replace(/'/g, "\\'"); 
-                const badgeClass = getBadgeClass(art.codice); // Anche qui!
-
+                const badgeClass = getBadgeClass(art.codice);
                 const html = `
                 <div class="flex justify-between items-center py-3">
                     <div class="flex-1 overflow-hidden">
@@ -414,12 +340,8 @@
                         <span class="text-gray-800 text-sm font-medium truncate block mt-1">${art.nome}</span>
                     </div>
                     <div class="flex gap-1">
-                        <button onclick="apriModalModifica(${art.id}, '${art.codice}', '${nomeSafe}')" class="text-blue-500 bg-blue-50 p-2 rounded-lg">
-                            <i data-lucide="pencil" class="w-4 h-4"></i>
-                        </button>
-                        <button onclick="rimuoviArticolo(${art.id}, '${art.codice}')" class="text-red-300 hover:text-red-600 p-2 bg-red-50 rounded-lg">
-                            <i data-lucide="trash" class="w-4 h-4"></i>
-                        </button>
+                        <button onclick="apriModalModifica(${art.id}, '${art.codice}', '${nomeSafe}')" class="text-blue-500 bg-blue-50 p-2 rounded-lg"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+                        <button onclick="rimuoviArticolo(${art.id}, '${art.codice}')" class="text-red-300 hover:text-red-600 p-2 bg-red-50 rounded-lg"><i data-lucide="trash" class="w-4 h-4"></i></button>
                     </div>
                 </div>`;
                 div.insertAdjacentHTML('beforeend', html);
@@ -431,29 +353,17 @@
             const cod = document.getElementById('newCodice').value.trim();
             const nom = document.getElementById('newNome').value.trim();
             if(!cod || !nom) return alert("Inserisci Codice e Nome!");
-
             const { error } = await client.from('articoli_magazzino').insert([{ codice: cod, nome: nom }]);
             if(error) alert("Errore: " + error.message);
-            else {
-                alert("Articolo aggiunto!");
-                document.getElementById('newCodice').value = "";
-                document.getElementById('newNome').value = "";
-                await caricaArticoli(); 
-                await caricaListaGestioneArticoli();
-            }
+            else { alert("Articolo aggiunto!"); document.getElementById('newCodice').value=""; document.getElementById('newNome').value=""; await caricaArticoli(); await caricaListaGestioneArticoli(); }
         }
 
         async function rimuoviArticolo(id, codice) {
-            if(!confirm(`Eliminare "${codice}"?\n\nNOTA: I vecchi movimenti resteranno in memoria.`)) return;
+            if(!confirm(`Eliminare "${codice}"?`)) return;
             const { error } = await client.from('articoli_magazzino').delete().eq('id', id);
-            if(!error) {
-                await caricaArticoli();
-                await caricaListaGestioneArticoli();
-                await caricaDati();
-            }
+            if(!error) { await caricaArticoli(); await caricaListaGestioneArticoli(); await caricaDati(); }
         }
 
-        // --- FUNZIONI MODIFICA ---
         function apriModalModifica(id, oldCod, oldNome) {
             document.getElementById('modalEdit').classList.remove('hidden');
             document.getElementById('editId').value = id;
@@ -461,55 +371,71 @@
             document.getElementById('editCodice').value = oldCod;
             document.getElementById('editNome').value = oldNome;
         }
-
-        function chiudiModal() {
-            document.getElementById('modalEdit').classList.add('hidden');
-        }
+        function chiudiModal() { document.getElementById('modalEdit').classList.add('hidden'); }
 
         async function salvaModificaArticolo() {
             const id = document.getElementById('editId').value;
             const oldCod = document.getElementById('editOldCodice').value;
             const newCod = document.getElementById('editCodice').value.trim();
             const newNome = document.getElementById('editNome').value.trim();
+            if(!newCod || !newNome) return alert("Campi vuoti!");
 
-            if(!newCod || !newNome) return alert("I campi non possono essere vuoti!");
-
-            const btn = document.querySelector('.btn-save');
-            btn.innerHTML = "Salvataggio...";
-            btn.disabled = true;
-
-            const { error } = await client
-                .from('articoli_magazzino')
-                .update({ codice: newCod, nome: newNome })
-                .eq('id', id);
-
-            if(error) {
-                alert("Errore: " + error.message);
-                btn.innerHTML = "Salva";
-                btn.disabled = false;
-                return;
-            }
+            const btn = document.querySelector('.btn-save'); btn.innerHTML = "..."; btn.disabled = true;
+            const { error } = await client.from('articoli_magazzino').update({ codice: newCod, nome: newNome }).eq('id', id);
+            if(error) { alert("Errore"); btn.innerHTML="Salva"; btn.disabled=false; return; }
 
             if (newCod !== oldCod) {
-                const { error: errMov } = await client
-                    .from('movimenti_magazzino')
-                    .update({ codice_articolo: newCod })
-                    .eq('codice_articolo', oldCod);
-                
-                if(errMov) alert("Errore aggiornamento storico: " + errMov.message);
+                await client.from('movimenti_magazzino').update({ codice_articolo: newCod }).eq('codice_articolo', oldCod);
             }
-
-            alert("Modifica salvata!");
-            chiudiModal();
-            btn.innerHTML = "Salva";
-            btn.disabled = false;
-
-            await caricaArticoli();
-            await caricaListaGestioneArticoli();
-            await caricaDati();
-            await caricaStorico();
+            alert("Salvato!"); chiudiModal(); btn.innerHTML="Salva"; btn.disabled=false;
+            await caricaArticoli(); await caricaListaGestioneArticoli(); await caricaDati(); await caricaStorico();
         }
 
+        // --- NUOVA FUNZIONE DI CONDIVISIONE ---
+        async function condividiReport() {
+            const { data: movimenti } = await client.from('movimenti_magazzino').select('*');
+            let saldi = {};
+            // Calcolo saldi (usando mappaArticoli per i nomi)
+            for(let cod in mappaArticoli) { saldi[cod] = 0; }
+            if(movimenti) {
+                movimenti.forEach(m => {
+                    if(saldi[m.codice_articolo] === undefined) saldi[m.codice_articolo] = 0;
+                    if(m.tipo === 'CONSEGNA') saldi[m.codice_articolo] += m.quantita;
+                    else saldi[m.codice_articolo] -= m.quantita;
+                });
+            }
+
+            // Costruzione testo
+            const oggi = new Date().toLocaleDateString('it-IT');
+            let testo = `📦 *SITUAZIONE MAGAZZINO OPAS* \n📅 Data: ${oggi}\n\n`;
+            
+            let daRendere = [];
+            let crediti = [];
+            let pari = [];
+
+            Object.keys(saldi).sort().forEach(cod => {
+                const q = saldi[cod];
+                const nome = mappaArticoli[cod] || cod;
+                if(q > 0) daRendere.push(`🔴 -${q}pz [${cod}] ${nome}`);
+                else if(q < 0) crediti.push(`🔵 +${Math.abs(q)}pz [${cod}] ${nome}`);
+                else pari.push(`✅ [${cod}] Pari`);
+            });
+
+            if(daRendere.length > 0) testo += `*DA RENDERE (Debiti):*\n${daRendere.join('\n')}\n\n`;
+            if(crediti.length > 0) testo += `*CREDITI (A favore):*\n${crediti.join('\n')}\n\n`;
+            testo += `_Generato da App Magazzino_`;
+
+            // Condivisione
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Magazzino Opas',
+                    text: testo
+                }).catch(console.error);
+            } else {
+                // Fallback per PC o browser vecchi
+                alert("Copia questo testo:\n\n" + testo);
+            }
+        }
     </script>
 </body>
 </html>
