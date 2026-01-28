@@ -6,100 +6,143 @@
     <title>Magazzino Opas</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        body { background-color: #f0f2f5; font-family: -apple-system, sans-serif; }
-        .card { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        .btn { width: 100%; padding: 15px; border-radius: 12px; font-weight: 700; font-size: 16px; transition: transform 0.1s; }
-        .btn:active { transform: scale(0.98); }
-        .btn-consegna { background-color: #10b981; color: white; } /* Verde */
-        .btn-reso { background-color: #ef4444; color: white; } /* Rosso */
-        input, select { font-size: 16px; } /* Evita zoom su iPhone */
+        body { background-color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
         
-        /* Stile Tabella */
-        .row-item { border-bottom: 1px solid #eee; padding: 10px 0; display: flex; justify-content: space-between; align-items: center; }
-        .badge-codice { background: #e0e7ff; color: #3730a3; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 12px; margin-right: 8px; }
-        .saldo-negativo { color: #dc2626; font-weight: bold; } /* Rosso scuro */
-        .saldo-positivo { color: #059669; font-weight: bold; } /* Verde scuro */
-        .saldo-neutro { color: #9ca3af; } /* Grigio */
+        /* Stile Card Generale */
+        .card { background: white; border-radius: 16px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 16px; }
+        
+        /* Bottoni */
+        .btn { width: 100%; padding: 14px; border-radius: 12px; font-weight: 700; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; transition: transform 0.1s; touch-action: manipulation; }
+        .btn:active { transform: scale(0.96); }
+        .btn-consegna { background-color: #10b981; color: white; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3); }
+        .btn-reso { background-color: #ef4444; color: white; box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.3); }
+        
+        /* Input ottimizzati per dita */
+        input, select { height: 50px; font-size: 16px; border-radius: 10px; border: 1px solid #e5e7eb; background: #f9fafb; width: 100%; padding: 0 12px; outline: none; }
+        input:focus, select:focus { border-color: #3b82f6; ring: 2px; }
+
+        /* Stile Storico Movimenti */
+        .history-item { padding: 12px 0; border-bottom: 1px solid #f3f4f6; display: flex; align-items: center; justify-content: space-between; }
+        .history-item:last-child { border-bottom: none; }
+        .tag-tipo { font-size: 11px; font-weight: 800; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .bg-consegna { background: #d1fae5; color: #065f46; } /* Verde chiaro */
+        .bg-reso { background: #fee2e2; color: #991b1b; } /* Rosso chiaro */
+
+        /* Stile Badge Codice */
+        .badge-codice { background: #e0e7ff; color: #3730a3; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 11px; margin-right: 6px; display: inline-block; }
     </style>
 </head>
-<body class="p-4 max-w-lg mx-auto">
+<body class="p-3 max-w-lg mx-auto pb-20">
 
-    <div class="text-center mb-6 mt-2">
-        <h1 class="text-2xl font-extrabold text-gray-800">📦 Magazzino</h1>
-        <p class="text-gray-500 text-sm">Gestione Attrezzature</p>
+    <div class="flex justify-between items-center mb-4 mt-2 px-1">
+        <div>
+            <h1 class="text-2xl font-extrabold text-gray-800 tracking-tight">📦 Opas Magazzino</h1>
+            <p class="text-gray-500 text-xs font-medium">Gestione Attrezzature</p>
+        </div>
+        <div class="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold">
+            OP
+        </div>
     </div>
 
     <div class="card">
-        <label class="block text-gray-600 text-sm font-bold mb-1">Data Operazione</label>
-        <input type="date" id="dataOp" class="w-full p-3 border rounded-lg bg-gray-50 mb-4">
+        <div class="grid grid-cols-2 gap-3 mb-3">
+            <div>
+                <label class="text-xs font-bold text-gray-500 ml-1 uppercase">Data</label>
+                <input type="date" id="dataOp">
+            </div>
+            <div>
+                <label class="text-xs font-bold text-gray-500 ml-1 uppercase">Quantità</label>
+                <input type="number" id="quantita" inputmode="numeric" placeholder="0" class="font-bold text-center text-lg">
+            </div>
+        </div>
 
-        <label class="block text-gray-600 text-sm font-bold mb-1">Seleziona Articolo</label>
-        <select id="articoloSelect" class="w-full p-3 border rounded-lg bg-white mb-4 border-gray-300">
-            <option value="">Caricamento...</option>
-        </select>
+        <div class="mb-4">
+            <label class="text-xs font-bold text-gray-500 ml-1 uppercase">Articolo</label>
+            <select id="articoloSelect" class="bg-white">
+                <option value="">Caricamento...</option>
+            </select>
+        </div>
 
-        <label class="block text-gray-600 text-sm font-bold mb-1">Quantità</label>
-        <input type="number" id="quantita" inputmode="numeric" class="w-full p-3 border rounded-lg bg-white mb-6 text-xl font-bold text-center" placeholder="0">
-
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-2 gap-3">
             <button onclick="salvaMovimento('CONSEGNA')" class="btn btn-consegna">
-                ⬇️ CONSEGNA
+                <i data-lucide="arrow-down-circle"></i> CONSEGNA
             </button>
             <button onclick="salvaMovimento('RESO')" class="btn btn-reso">
-                ⬆️ RESO
+                <i data-lucide="arrow-up-circle"></i> RESO
             </button>
         </div>
     </div>
 
-    <div class="card">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-bold text-gray-700">Situazione Attuale</h2>
-            <button onclick="caricaDati()" class="text-blue-600 text-sm font-semibold bg-blue-50 px-3 py-1 rounded-full">🔄 Aggiorna</button>
+    <div class="flex gap-4 border-b border-gray-300 mb-4 px-2">
+        <button onclick="cambiaTab('riepilogo')" id="btnTabRiepilogo" class="pb-2 border-b-2 border-blue-600 font-bold text-blue-600 text-sm">SITUAZIONE</button>
+        <button onclick="cambiaTab('storico')" id="btnTabStorico" class="pb-2 border-b-2 border-transparent text-gray-500 font-bold text-sm">ULTIMI MOVIMENTI</button>
+    </div>
+
+    <div id="viewRiepilogo" class="card min-h-[300px]">
+        <div class="flex justify-between items-center mb-2">
+            <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wide">Saldi Attuali</h2>
+            <button onclick="caricaDati()" class="text-blue-500 text-xs font-bold bg-blue-50 px-2 py-1 rounded-md">🔄 AGGIORNA</button>
         </div>
-        
-        <div id="listaSaldi" class="text-sm">
-            <div class="text-center py-6 text-gray-400">Caricamento dati...</div>
+        <div id="listaSaldi" class="divide-y divide-gray-100">
+            <div class="text-center py-10 text-gray-400"><div class="animate-spin h-6 w-6 border-2 border-blue-500 border-t-transparent rounded-full mx-auto"></div></div>
         </div>
+    </div>
+
+    <div id="viewStorico" class="card hidden">
+        <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wide mb-2">Ultime 30 operazioni</h2>
+        <div id="listaStorico" class="divide-y divide-gray-100">
+            </div>
     </div>
 
     <script>
-        // --- 🔴 CONFIGURAZIONE SUPABASE AGGIORNATA 🔴 ---
+        // --- 🔴 CONFIGURAZIONE SUPABASE 🔴 ---
         const SUPABASE_URL = "https://sfktcyqtqfrdhgxokuvd.supabase.co";
         const SUPABASE_KEY = "sb_publishable_wSVYfrqCOI1dE9rvSrZhng_CNdP8YHw";
         
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        let mappaArticoli = {}; // Per ricordarci i nomi associati ai codici
+        let mappaArticoli = {}; 
 
-        // AVVIO
+        // INIZIALIZZAZIONE
         document.addEventListener('DOMContentLoaded', async () => {
+            lucide.createIcons();
             document.getElementById('dataOp').valueAsDate = new Date();
+            
             await caricaArticoli();
-            await caricaDati();
+            await caricaDati();     // Carica i saldi
+            await caricaStorico();  // Carica la lista movimenti
         });
 
-        // 1. CARICA LISTA ARTICOLI (Per il menu a tendina)
-        async function caricaArticoli() {
-            // Scarica gli articoli dal database
-            const { data, error } = await client.from('articoli_magazzino').select('*').order('codice');
-            
-            // Gestione errori iniziale
-            if(error) { 
-                console.error("Errore caricamento articoli:", error); 
-                alert("Errore di connessione al database! Controlla la console."); 
-                return; 
+        // GESTIONE TAB
+        function cambiaTab(tab) {
+            if(tab === 'riepilogo') {
+                document.getElementById('viewRiepilogo').classList.remove('hidden');
+                document.getElementById('viewStorico').classList.add('hidden');
+                document.getElementById('btnTabRiepilogo').className = "pb-2 border-b-2 border-blue-600 font-bold text-blue-600 text-sm";
+                document.getElementById('btnTabStorico').className = "pb-2 border-b-2 border-transparent text-gray-500 font-bold text-sm";
+            } else {
+                document.getElementById('viewRiepilogo').classList.add('hidden');
+                document.getElementById('viewStorico').classList.remove('hidden');
+                document.getElementById('btnTabRiepilogo').className = "pb-2 border-b-2 border-transparent text-gray-500 font-bold text-sm";
+                document.getElementById('btnTabStorico').className = "pb-2 border-b-2 border-blue-600 font-bold text-blue-600 text-sm";
             }
+        }
+
+        // 1. CARICA ARTICOLI
+        async function caricaArticoli() {
+            const { data, error } = await client.from('articoli_magazzino').select('*').order('codice');
+            if(error) return alert("Errore DB!");
 
             const select = document.getElementById('articoloSelect');
-            select.innerHTML = '<option value="">-- Seleziona --</option>';
+            select.innerHTML = '<option value="">-- Seleziona Articolo --</option>';
 
             if (data) {
                 data.forEach(art => {
-                    mappaArticoli[art.codice] = art.nome; // Salviamo la corrispondenza
+                    mappaArticoli[art.codice] = art.nome;
                     const opt = document.createElement('option');
                     opt.value = art.codice;
-                    // Mostra nel menu: "04A - STAFFA INOX..."
-                    opt.text = `${art.codice} - ${art.nome}`; 
+                    opt.text = `${art.codice} - ${art.nome}`;
                     select.appendChild(opt);
                 });
             }
@@ -111,11 +154,13 @@
             const codice = document.getElementById('articoloSelect').value;
             const qta = document.getElementById('quantita').value;
 
-            if(!codice || !qta) return alert("Compila tutti i campi! ⚠️");
+            if(!codice || !qta) return alert("Inserisci Articolo e Quantità!");
 
-            // Disabilita bottoni momentaneamente per evitare doppi click
-            const btns = document.querySelectorAll('.btn');
-            btns.forEach(b => b.disabled = true);
+            // Feedback visivo immediato
+            const btn = event.currentTarget;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = "⏳ Attendi...";
+            btn.disabled = true;
 
             const { error } = await client.from('movimenti_magazzino').insert([{
                 data_operazione: dataOp,
@@ -125,86 +170,141 @@
             }]);
 
             if(error) {
-                alert("Errore durante il salvataggio: " + error.message);
-                console.error(error);
+                alert("Errore: " + error.message);
             } else {
-                // Successo
                 document.getElementById('quantita').value = "";
-                await caricaDati(); // Ricarica la tabella sotto
-                alert(tipo + " registrata! ✅");
+                await caricaDati();
+                await caricaStorico();
+                alert("Salvato! ✅");
             }
-            btns.forEach(b => b.disabled = false);
+            btn.innerHTML = originalText;
+            btn.disabled = false;
         }
 
-        // 3. CALCOLA E MOSTRA I TOTALI
+        // 3. CARICA SALDI (RIEPILOGO)
         async function caricaDati() {
             const divLista = document.getElementById('listaSaldi');
-            divLista.style.opacity = "0.5"; // Effetto "caricamento" visivo
+            divLista.style.opacity = "0.5";
             
-            // Scarica tutti i movimenti
             const { data: movimenti, error } = await client.from('movimenti_magazzino').select('*');
-            if(error) {
-                console.error("Errore movimenti:", error);
-                divLista.innerHTML = "Errore nel caricamento dati.";
-                return;
-            }
+            if(error) return;
 
-            // Calcolo Saldi
             let saldi = {};
-            // Inizializza tutti gli articoli a 0 (così vediamo anche quelli mai usati)
             for(let cod in mappaArticoli) { saldi[cod] = 0; }
 
             if(movimenti) {
                 movimenti.forEach(m => {
-                    // Se troviamo un codice vecchio o cancellato, lo gestiamo
                     if(saldi[m.codice_articolo] === undefined) saldi[m.codice_articolo] = 0;
-                    
-                    if(m.tipo === 'CONSEGNA') {
-                        saldi[m.codice_articolo] += m.quantita; // Aumenta il debito
-                    } else {
-                        saldi[m.codice_articolo] -= m.quantita; // Diminuisce il debito (reso)
-                    }
+                    if(m.tipo === 'CONSEGNA') saldi[m.codice_articolo] += m.quantita;
+                    else saldi[m.codice_articolo] -= m.quantita;
                 });
             }
 
-            // Disegna HTML
             divLista.innerHTML = "";
             const codiciOrdinati = Object.keys(saldi).sort();
 
-            if (codiciOrdinati.length === 0) {
-                 divLista.innerHTML = '<div class="text-center py-4 text-gray-500">Nessun dato.</div>';
-            } else {
-                codiciOrdinati.forEach(cod => {
-                    const totale = saldi[cod];
-                    const nome = mappaArticoli[cod] || "Articolo sconosciuto";
+            let haDati = false;
+            codiciOrdinati.forEach(cod => {
+                const totale = saldi[cod];
+                const nome = mappaArticoli[cod] || "???";
 
-                    // Logica colori: Rosso se c'è debito, Verde se pari
-                    let coloreClass = "saldo-neutro";
-                    let testoSaldo = "Pari";
-                    
-                    if(totale > 0) {
-                        coloreClass = "saldo-negativo";
-                        testoSaldo = `Da rendere: ${totale}`;
-                    } else if (totale < 0) {
-                        coloreClass = "text-blue-500 font-bold";
-                        testoSaldo = `Credito: ${Math.abs(totale)}`;
-                    }
+                // Mostra solo se diverso da 0 (opzionale, per pulizia) o mostra tutto
+                // Qui mostro tutto, ma evidenzio i debiti
+                let colorClass = "text-gray-400"; // Neutro
+                let textVal = "0";
 
-                    const riga = `
-                    <div class="row-item">
-                        <div style="flex:1;">
+                if(totale > 0) {
+                    colorClass = "text-red-600 font-bold";
+                    textVal = `-${totale}`; // Debito
+                } else if (totale < 0) {
+                    colorClass = "text-blue-600 font-bold";
+                    textVal = `+${Math.abs(totale)}`; // Credito
+                }
+
+                const html = `
+                <div class="flex justify-between items-center py-3">
+                    <div class="flex-1 pr-2">
+                        <div class="flex items-center">
                             <span class="badge-codice">${cod}</span>
-                            <span class="text-gray-700 font-medium text-sm">${nome}</span>
                         </div>
-                        <div class="${coloreClass} text-right text-sm" style="min-width: 90px;">
-                            ${testoSaldo}
-                        </div>
-                    </div>`;
-                    
-                    divLista.insertAdjacentHTML('beforeend', riga);
-                });
-            }
+                        <div class="text-gray-800 text-sm leading-tight mt-1">${nome}</div>
+                    </div>
+                    <div class="${colorClass} text-lg font-mono text-right w-16">${textVal}</div>
+                </div>`;
+                divLista.insertAdjacentHTML('beforeend', html);
+                haDati = true;
+            });
+
+            if(!haDati) divLista.innerHTML = '<div class="text-center py-4 text-gray-400">Nessun dato.</div>';
             divLista.style.opacity = "1";
+        }
+
+        // 4. CARICA STORICO (NUOVA FUNZIONE)
+        async function caricaStorico() {
+            const divStorico = document.getElementById('listaStorico');
+            
+            // Scarica gli ultimi 50 movimenti ordinati per data creazione (più recenti in alto)
+            const { data, error } = await client
+                .from('movimenti_magazzino')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(50);
+
+            if(error) { console.error(error); return; }
+
+            divStorico.innerHTML = "";
+
+            if(data.length === 0) {
+                divStorico.innerHTML = '<div class="text-center py-6 text-gray-400 text-sm">Nessun movimento recente.</div>';
+                return;
+            }
+
+            data.forEach(m => {
+                const nomeArticolo = mappaArticoli[m.codice_articolo] || m.codice_articolo;
+                // Formatta la data: es. 28/01
+                const dataOp = new Date(m.data_operazione).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
+                
+                const isConsegna = m.tipo === 'CONSEGNA';
+                const tagClass = isConsegna ? 'bg-consegna' : 'bg-reso';
+                const icona = isConsegna ? '⬇️' : '⬆️';
+                
+                // Card singola per lo storico
+                const html = `
+                <div class="history-item">
+                    <div class="flex flex-col items-center justify-center w-12 border-r border-gray-100 pr-2 mr-3">
+                        <span class="text-gray-500 font-bold text-xs">${dataOp}</span>
+                        <span class="${tagClass} tag-tipo mt-1 text-[9px]">${isConsegna ? 'CONS' : 'RESO'}</span>
+                    </div>
+
+                    <div class="flex-1 overflow-hidden">
+                        <p class="text-xs text-gray-400 font-bold">${m.codice_articolo}</p>
+                        <p class="text-sm text-gray-800 truncate font-medium">${nomeArticolo}</p>
+                    </div>
+
+                    <div class="flex items-center gap-3 pl-2">
+                        <span class="text-base font-bold text-gray-700">${m.quantita}</span>
+                        <button onclick="eliminaMovimento(${m.id})" class="text-gray-300 hover:text-red-500 p-2">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>`;
+                
+                divStorico.insertAdjacentHTML('beforeend', html);
+            });
+            lucide.createIcons(); // Aggiorna icone
+        }
+
+        // 5. ELIMINA MOVIMENTO
+        async function eliminaMovimento(id) {
+            if(!confirm("Vuoi davvero cancellare questa riga?")) return;
+
+            const { error } = await client.from('movimenti_magazzino').delete().eq('id', id);
+            
+            if(error) alert("Errore eliminazione");
+            else {
+                await caricaDati();
+                await caricaStorico();
+            }
         }
     </script>
 </body>
