@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Magazzino Opas</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #f0f2f5; font-family: -apple-system, sans-serif; }
+        .card { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .btn { width: 100%; padding: 15px; border-radius: 12px; font-weight: 700; font-size: 16px; transition: transform 0.1s; }
+        .btn:active { transform: scale(0.98); }
+        .btn-consegna { background-color: #10b981; color: white; } /* Verde */
+        .btn-reso { background-color: #ef4444; color: white; } /* Rosso */
+        input, select { font-size: 16px; } /* Evita zoom su iPhone */
+        
+        /* Stile Tabella */
+        .row-item { border-bottom: 1px solid #eee; padding: 10px 0; display: flex; justify-content: space-between; align-items: center; }
+        .badge-codice { background: #e0e7ff; color: #3730a3; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 12px; margin-right: 8px; }
+        .saldo-negativo { color: #dc2626; font-weight: bold; } /* Rosso scuro */
+        .saldo-positivo { color: #059669; font-weight: bold; } /* Verde scuro */
+        .saldo-neutro { color: #9ca3af; } /* Grigio */
+    </style>
+</head>
+<body class="p-4 max-w-lg mx-auto">
+
+    <div class="text-center mb-6 mt-2">
+        <h1 class="text-2xl font-extrabold text-gray-800">📦 Magazzino</h1>
+        <p class="text-gray-500 text-sm">Gestione Attrezzature</p>
+    </div>
+
+    <div class="card">
+        <label class="block text-gray-600 text-sm font-bold mb-1">Data Operazione</label>
+        <input type="date" id="dataOp" class="w-full p-3 border rounded-lg bg-gray-50 mb-4">
+
+        <label class="block text-gray-600 text-sm font-bold mb-1">Seleziona Articolo</label>
+        <select id="articoloSelect" class="w-full p-3 border rounded-lg bg-white mb-4 border-gray-300">
+            <option value="">Caricamento...</option>
+        </select>
+
+        <label class="block text-gray-600 text-sm font-bold mb-1">Quantità</label>
+        <input type="number" id="quantita" inputmode="numeric" class="w-full p-3 border rounded-lg bg-white mb-6 text-xl font-bold text-center" placeholder="0">
+
+        <div class="grid grid-cols-2 gap-4">
+            <button onclick="salvaMovimento('CONSEGNA')" class="btn btn-consegna">
+                ⬇️ CONSEGNA
+            </button>
+            <button onclick="salvaMovimento('RESO')" class="btn btn-reso">
+                ⬆️ RESO
+            </button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-bold text-gray-700">Situazione Attuale</h2>
+            <button onclick="caricaDati()" class="text-blue-600 text-sm font-semibold bg-blue-50 px-3 py-1 rounded-full">🔄 Aggiorna</button>
+        </div>
+        
+        <div id="listaSaldi" class="text-sm">
+            <div class="text-center py-6 text-gray-400">Caricamento dati...</div>
+        </div>
+    </div>
+
+    <script>
+        // --- 🔴 CONFIGURAZIONE SUPABASE AGGIORNATA 🔴 ---
+        const SUPABASE_URL = "https://sfktcyqtqfrdhgxokuvd.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_wSVYfrqCOI1dE9rvSrZhng_CNdP8YHw";
+        
+        const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        let mappaArticoli = {}; // Per ricordarci i nomi associati ai codici
+
+        // AVVIO
+        document.addEventListener('DOMContentLoaded', async () => {
+            document.getElementById('dataOp').valueAsDate = new Date();
+            await caricaArticoli();
+            await caricaDati();
+        });
+
+        // 1. CARICA LISTA ARTICOLI (Per il menu a tendina)
+        async function caricaArticoli() {
+            // Scarica gli articoli dal database
+            const { data, error } = await client.from('articoli_magazzino').select('*').order('codice');
+            
+            // Gestione errori iniziale
+            if(error) { 
+                console.error("Errore caricamento articoli:", error); 
+                alert("Errore di connessione al database! Controlla la console."); 
+                return; 
+            }
+
+            const select = document.getElementById('articoloSelect');
+            select.innerHTML = '<option value="">-- Seleziona --</option>';
+
+            if (data) {
+                data.forEach(art => {
+                    mappaArticoli[art.codice] = art.nome; // Salviamo la corrispondenza
+                    const opt = document.createElement('option');
+                    opt.value = art.codice;
+                    // Mostra nel menu: "04A - STAFFA INOX..."
+                    opt.text = `${art.codice} - ${art.nome}`; 
+                    select.appendChild(opt);
+                });
+            }
+        }
+
+        // 2. SALVA MOVIMENTO
+        async function salvaMovimento(tipo) {
+            const dataOp = document.getElementById('dataOp').value;
+            const codice = document.getElementById('articoloSelect').value;
+            const qta = document.getElementById('quantita').value;
+
+            if(!codice || !qta) return alert("Compila tutti i campi! ⚠️");
+
+            // Disabilita bottoni momentaneamente per evitare doppi click
+            const btns = document.querySelectorAll('.btn');
+            btns.forEach(b => b.disabled = true);
+
+            const { error } = await client.from('movimenti_magazzino').insert([{
+                data_operazione: dataOp,
+                tipo: tipo,
+                codice_articolo: codice,
+                quantita: parseInt(qta)
+            }]);
+
+            if(error) {
+                alert("Errore durante il salvataggio: " + error.message);
+                console.error(error);
+            } else {
+                // Successo
+                document.getElementById('quantita').value = "";
+                await caricaDati(); // Ricarica la tabella sotto
+                alert(tipo + " registrata! ✅");
+            }
+            btns.forEach(b => b.disabled = false);
+        }
+
+        // 3. CALCOLA E MOSTRA I TOTALI
+        async function caricaDati() {
+            const divLista = document.getElementById('listaSaldi');
+            divLista.style.opacity = "0.5"; // Effetto "caricamento" visivo
+            
+            // Scarica tutti i movimenti
+            const { data: movimenti, error } = await client.from('movimenti_magazzino').select('*');
+            if(error) {
+                console.error("Errore movimenti:", error);
+                divLista.innerHTML = "Errore nel caricamento dati.";
+                return;
+            }
+
+            // Calcolo Saldi
+            let saldi = {};
+            // Inizializza tutti gli articoli a 0 (così vediamo anche quelli mai usati)
+            for(let cod in mappaArticoli) { saldi[cod] = 0; }
+
+            if(movimenti) {
+                movimenti.forEach(m => {
+                    // Se troviamo un codice vecchio o cancellato, lo gestiamo
+                    if(saldi[m.codice_articolo] === undefined) saldi[m.codice_articolo] = 0;
+                    
+                    if(m.tipo === 'CONSEGNA') {
+                        saldi[m.codice_articolo] += m.quantita; // Aumenta il debito
+                    } else {
+                        saldi[m.codice_articolo] -= m.quantita; // Diminuisce il debito (reso)
+                    }
+                });
+            }
+
+            // Disegna HTML
+            divLista.innerHTML = "";
+            const codiciOrdinati = Object.keys(saldi).sort();
+
+            if (codiciOrdinati.length === 0) {
+                 divLista.innerHTML = '<div class="text-center py-4 text-gray-500">Nessun dato.</div>';
+            } else {
+                codiciOrdinati.forEach(cod => {
+                    const totale = saldi[cod];
+                    const nome = mappaArticoli[cod] || "Articolo sconosciuto";
+
+                    // Logica colori: Rosso se c'è debito, Verde se pari
+                    let coloreClass = "saldo-neutro";
+                    let testoSaldo = "Pari";
+                    
+                    if(totale > 0) {
+                        coloreClass = "saldo-negativo";
+                        testoSaldo = `Da rendere: ${totale}`;
+                    } else if (totale < 0) {
+                        coloreClass = "text-blue-500 font-bold";
+                        testoSaldo = `Credito: ${Math.abs(totale)}`;
+                    }
+
+                    const riga = `
+                    <div class="row-item">
+                        <div style="flex:1;">
+                            <span class="badge-codice">${cod}</span>
+                            <span class="text-gray-700 font-medium text-sm">${nome}</span>
+                        </div>
+                        <div class="${coloreClass} text-right text-sm" style="min-width: 90px;">
+                            ${testoSaldo}
+                        </div>
+                    </div>`;
+                    
+                    divLista.insertAdjacentHTML('beforeend', riga);
+                });
+            }
+            divLista.style.opacity = "1";
+        }
+    </script>
+</body>
+</html>
