@@ -19,6 +19,7 @@
         .btn-consegna { background-color: #10b981; color: white; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3); }
         .btn-reso { background-color: #ef4444; color: white; box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.3); }
         .btn-add { background-color: #3b82f6; color: white; box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3); }
+        .btn-save { background-color: #2563eb; color: white; }
         
         /* Input ottimizzati per dita */
         input, select { height: 50px; font-size: 16px; border-radius: 10px; border: 1px solid #e5e7eb; background: #f9fafb; width: 100%; padding: 0 12px; outline: none; }
@@ -33,6 +34,9 @@
 
         /* Stile Badge Codice */
         .badge-codice { background: #e0e7ff; color: #3730a3; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 11px; margin-right: 6px; display: inline-block; }
+
+        /* Modale */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 50; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
     </style>
 </head>
 <body class="p-3 max-w-lg mx-auto pb-24">
@@ -107,7 +111,7 @@
             <h3 class="text-sm font-bold text-blue-800 uppercase mb-3">Aggiungi Nuovo Articolo</h3>
             <div class="grid grid-cols-3 gap-2 mb-2">
                 <div class="col-span-1">
-                    <input type="text" id="newCodice" placeholder="Codice (es. 99)" class="text-sm">
+                    <input type="text" id="newCodice" placeholder="Cod. (es. 99)" class="text-sm">
                 </div>
                 <div class="col-span-2">
                     <input type="text" id="newNome" placeholder="Nome Articolo" class="text-sm">
@@ -119,9 +123,30 @@
         </div>
 
         <div class="card">
-            <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wide mb-2">Articoli in Memoria</h2>
+            <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wide mb-2">Modifica / Elimina</h2>
             <div id="listaGestioneArticoli" class="divide-y divide-gray-100">
                 </div>
+        </div>
+    </div>
+
+    <div id="modalEdit" class="modal-overlay hidden">
+        <div class="bg-white rounded-2xl p-6 w-[90%] max-w-sm shadow-2xl">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">Modifica Articolo</h3>
+            
+            <input type="hidden" id="editId">
+            <input type="hidden" id="editOldCodice"> <label class="text-xs font-bold text-gray-500 uppercase">Codice</label>
+            <input type="text" id="editCodice" class="mb-4 font-mono font-bold text-blue-800">
+
+            <label class="text-xs font-bold text-gray-500 uppercase">Nome</label>
+            <input type="text" id="editNome" class="mb-6">
+
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="chiudiModal()" class="btn bg-gray-200 text-gray-700">Annulla</button>
+                <button onclick="salvaModificaArticolo()" class="btn btn-save">Salva</button>
+            </div>
+            <p class="text-[10px] text-gray-400 mt-4 text-center leading-tight">
+                ⚠️ Se cambi il Codice, verranno aggiornati automaticamente anche tutti i movimenti passati.
+            </p>
         </div>
     </div>
 
@@ -138,20 +163,17 @@
             lucide.createIcons();
             document.getElementById('dataOp').valueAsDate = new Date();
             
-            await caricaArticoli(); // Carica select e mappa
-            await caricaDati();     // Carica saldi
-            await caricaStorico();  // Carica storico
-            // Nota: La lista "Gestione Articoli" viene caricata solo se si apre la tab, o dopo aggiornamenti
+            await caricaArticoli(); 
+            await caricaDati();     
+            await caricaStorico();  
         });
 
         // GESTIONE TAB
         function cambiaTab(tab) {
-            // Nascondi tutto
             document.getElementById('viewRiepilogo').classList.add('hidden');
             document.getElementById('viewStorico').classList.add('hidden');
             document.getElementById('viewArticoli').classList.add('hidden');
             
-            // Reset bottoni
             const btnClassInactive = "flex-1 pb-2 border-b-2 border-transparent text-gray-500 font-bold text-xs text-center";
             const btnClassActive = "flex-1 pb-2 border-b-2 border-blue-600 font-bold text-blue-600 text-xs text-center";
             
@@ -159,12 +181,11 @@
             document.getElementById('btnTabStorico').className = btnClassInactive;
             document.getElementById('btnTabArticoli').className = btnClassInactive;
 
-            // Mostra box inserimento solo se NON siamo in gestione articoli
             if(tab === 'articoli') {
                 document.getElementById('boxInserimento').classList.add('hidden');
                 document.getElementById('viewArticoli').classList.remove('hidden');
                 document.getElementById('btnTabArticoli').className = btnClassActive;
-                caricaListaGestioneArticoli(); // Carica la lista per la gestione
+                caricaListaGestioneArticoli(); 
             } else {
                 document.getElementById('boxInserimento').classList.remove('hidden');
                 if(tab === 'riepilogo') {
@@ -177,14 +198,14 @@
             }
         }
 
-        // 1. CARICA ARTICOLI (Per Select e Mappa)
+        // 1. CARICA ARTICOLI
         async function caricaArticoli() {
             const { data, error } = await client.from('articoli_magazzino').select('*').order('codice');
             if(error) return alert("Errore DB!");
 
             const select = document.getElementById('articoloSelect');
             select.innerHTML = '<option value="">-- Seleziona Articolo --</option>';
-            mappaArticoli = {}; // Reset mappa
+            mappaArticoli = {}; 
 
             if (data) {
                 data.forEach(art => {
@@ -238,15 +259,11 @@
             if(error) return;
 
             let saldi = {};
-            // Inizializza con gli articoli ATTUALI
             for(let cod in mappaArticoli) { saldi[cod] = 0; }
 
             if(movimenti) {
                 movimenti.forEach(m => {
-                    // Se un articolo è stato cancellato dalla lista, lo inizializziamo qui
-                    // così appare comunque nel riepilogo se ha debiti
                     if(saldi[m.codice_articolo] === undefined) saldi[m.codice_articolo] = 0;
-                    
                     if(m.tipo === 'CONSEGNA') saldi[m.codice_articolo] += m.quantita;
                     else saldi[m.codice_articolo] -= m.quantita;
                 });
@@ -258,8 +275,7 @@
             let haDati = false;
             codiciOrdinati.forEach(cod => {
                 const totale = saldi[cod];
-                // Se l'articolo è stato cancellato, usiamo il codice o un placeholder
-                const nome = mappaArticoli[cod] || `<span class='text-red-400 italic'>(Articolo ${cod} Archiviato)</span>`;
+                const nome = mappaArticoli[cod] || `<span class='text-red-400 italic'>(${cod} Archiviato)</span>`;
 
                 let colorClass = "text-gray-400"; 
                 let textVal = "0";
@@ -346,27 +362,33 @@
             if(!error) { await caricaDati(); await caricaStorico(); }
         }
 
-        // --- 5. FUNZIONI NUOVA GESTIONE ARTICOLI ---
+        // --- 5. GESTIONE ARTICOLI (AGGIUNGI, RIMUOVI, MODIFICA) ---
 
         async function caricaListaGestioneArticoli() {
             const div = document.getElementById('listaGestioneArticoli');
             div.innerHTML = '<div class="text-center py-4 text-gray-400">Caricamento...</div>';
             
-            // Scarichiamo di nuovo per essere sicuri
             const { data, error } = await client.from('articoli_magazzino').select('*').order('codice');
             if(error) return;
 
             div.innerHTML = "";
             data.forEach(art => {
+                // Notare l'escape delle virgolette per evitare errori JS nel nome
+                const nomeSafe = art.nome.replace(/'/g, "\\'"); 
                 const html = `
                 <div class="flex justify-between items-center py-3">
-                    <div>
+                    <div class="flex-1 overflow-hidden">
                         <span class="badge-codice text-sm">${art.codice}</span>
-                        <span class="text-gray-800 text-sm font-medium">${art.nome}</span>
+                        <span class="text-gray-800 text-sm font-medium truncate block">${art.nome}</span>
                     </div>
-                    <button onclick="rimuoviArticolo(${art.id}, '${art.codice}')" class="text-red-300 hover:text-red-600 p-2 bg-red-50 rounded-lg">
-                        <i data-lucide="trash" class="w-4 h-4"></i>
-                    </button>
+                    <div class="flex gap-1">
+                        <button onclick="apriModalModifica(${art.id}, '${art.codice}', '${nomeSafe}')" class="text-blue-500 bg-blue-50 p-2 rounded-lg">
+                            <i data-lucide="pencil" class="w-4 h-4"></i>
+                        </button>
+                        <button onclick="rimuoviArticolo(${art.id}, '${art.codice}')" class="text-red-300 hover:text-red-600 p-2 bg-red-50 rounded-lg">
+                            <i data-lucide="trash" class="w-4 h-4"></i>
+                        </button>
+                    </div>
                 </div>`;
                 div.insertAdjacentHTML('beforeend', html);
             });
@@ -376,37 +398,89 @@
         async function aggiungiArticolo() {
             const cod = document.getElementById('newCodice').value.trim();
             const nom = document.getElementById('newNome').value.trim();
-
             if(!cod || !nom) return alert("Inserisci Codice e Nome!");
 
             const { error } = await client.from('articoli_magazzino').insert([{ codice: cod, nome: nom }]);
-
-            if(error) {
-                alert("Errore: " + error.message + "\n(Forse il codice esiste già?)");
-            } else {
+            if(error) alert("Errore: " + error.message);
+            else {
                 alert("Articolo aggiunto!");
                 document.getElementById('newCodice').value = "";
                 document.getElementById('newNome').value = "";
-                
-                // Aggiorna tutto
                 await caricaArticoli(); 
                 await caricaListaGestioneArticoli();
             }
         }
 
         async function rimuoviArticolo(id, codice) {
-            if(!confirm(`Sei sicura di voler eliminare l'articolo "${codice}" dalla lista?\n\nNOTA: I vecchi movimenti rimarranno salvati, ma non potrai più selezionarlo per quelli nuovi.`)) return;
-
+            if(!confirm(`Eliminare "${codice}"?\n\nNOTA: I vecchi movimenti resteranno in memoria.`)) return;
             const { error } = await client.from('articoli_magazzino').delete().eq('id', id);
+            if(!error) {
+                await caricaArticoli();
+                await caricaListaGestioneArticoli();
+                await caricaDati();
+            }
+        }
+
+        // --- FUNZIONI MODIFICA (MODALE) ---
+        function apriModalModifica(id, oldCod, oldNome) {
+            document.getElementById('modalEdit').classList.remove('hidden');
+            document.getElementById('editId').value = id;
+            document.getElementById('editOldCodice').value = oldCod;
+            document.getElementById('editCodice').value = oldCod;
+            document.getElementById('editNome').value = oldNome;
+        }
+
+        function chiudiModal() {
+            document.getElementById('modalEdit').classList.add('hidden');
+        }
+
+        async function salvaModificaArticolo() {
+            const id = document.getElementById('editId').value;
+            const oldCod = document.getElementById('editOldCodice').value;
+            const newCod = document.getElementById('editCodice').value.trim();
+            const newNome = document.getElementById('editNome').value.trim();
+
+            if(!newCod || !newNome) return alert("I campi non possono essere vuoti!");
+
+            const btn = document.querySelector('.btn-save');
+            btn.innerHTML = "Salvataggio...";
+            btn.disabled = true;
+
+            // 1. Aggiorna l'Articolo nel listino
+            const { error } = await client
+                .from('articoli_magazzino')
+                .update({ codice: newCod, nome: newNome })
+                .eq('id', id);
 
             if(error) {
                 alert("Errore: " + error.message);
-            } else {
-                // Aggiorna tutto
-                await caricaArticoli();
-                await caricaListaGestioneArticoli();
-                await caricaDati(); // Aggiorna riepilogo (potrebbe cambiare nome in "Archiviato")
+                btn.innerHTML = "Salva";
+                btn.disabled = false;
+                return;
             }
+
+            // 2. Se il codice è cambiato, dobbiamo aggiornare TUTTI i vecchi movimenti
+            // (Aggiornamento a cascata manuale)
+            if (newCod !== oldCod) {
+                const { error: errMov } = await client
+                    .from('movimenti_magazzino')
+                    .update({ codice_articolo: newCod })
+                    .eq('codice_articolo', oldCod);
+                
+                if(errMov) alert("Attenzione: Articolo aggiornato ma errore nell'aggiornamento storico: " + errMov.message);
+            }
+
+            // 3. Finito
+            alert("Modifica salvata con successo!");
+            chiudiModal();
+            btn.innerHTML = "Salva";
+            btn.disabled = false;
+
+            // Ricarica tutto
+            await caricaArticoli();
+            await caricaListaGestioneArticoli();
+            await caricaDati();
+            await caricaStorico();
         }
 
     </script>
