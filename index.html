@@ -77,7 +77,7 @@
 
     <div class="flex gap-4 border-b border-gray-300 mb-4 px-2">
         <button onclick="cambiaTab('riepilogo')" id="btnTabRiepilogo" class="pb-2 border-b-2 border-blue-600 font-bold text-blue-600 text-sm">SITUAZIONE</button>
-        <button onclick="cambiaTab('storico')" id="btnTabStorico" class="pb-2 border-b-2 border-transparent text-gray-500 font-bold text-sm">ULTIMI MOVIMENTI</button>
+        <button onclick="cambiaTab('storico')" id="btnTabStorico" class="pb-2 border-b-2 border-transparent text-gray-500 font-bold text-sm">TUTTI I MOVIMENTI</button>
     </div>
 
     <div id="viewRiepilogo" class="card min-h-[300px]">
@@ -91,7 +91,10 @@
     </div>
 
     <div id="viewStorico" class="card hidden">
-        <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wide mb-2">Ultime 30 operazioni</h2>
+        <div class="flex justify-between items-center mb-2">
+            <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wide">Storico Completo</h2>
+            <span class="text-xs text-gray-400" id="contatoreMovimenti"></span>
+        </div>
         <div id="listaStorico" class="divide-y divide-gray-100">
             </div>
     </div>
@@ -208,8 +211,7 @@
                 const totale = saldi[cod];
                 const nome = mappaArticoli[cod] || "???";
 
-                // Mostra solo se diverso da 0 (opzionale, per pulizia) o mostra tutto
-                // Qui mostro tutto, ma evidenzio i debiti
+                // Mostra tutto, evidenziando i debiti
                 let colorClass = "text-gray-400"; // Neutro
                 let textVal = "0";
 
@@ -239,50 +241,52 @@
             divLista.style.opacity = "1";
         }
 
-        // 4. CARICA STORICO (NUOVA FUNZIONE)
+        // 4. CARICA STORICO COMPLETO (MODIFICATO: SENZA LIMITI)
         async function caricaStorico() {
             const divStorico = document.getElementById('listaStorico');
             
-            // Scarica gli ultimi 50 movimenti ordinati per data creazione (più recenti in alto)
+            // Scarica TUTTO ordinato per DATA OPERAZIONE (decrescente) e poi per DATA INSERIMENTO
             const { data, error } = await client
                 .from('movimenti_magazzino')
                 .select('*')
-                .order('created_at', { ascending: false })
-                .limit(50);
+                .order('data_operazione', { ascending: false })
+                .order('created_at', { ascending: false });
 
             if(error) { console.error(error); return; }
 
             divStorico.innerHTML = "";
+            document.getElementById('contatoreMovimenti').textContent = `${data.length} mov.`;
 
             if(data.length === 0) {
-                divStorico.innerHTML = '<div class="text-center py-6 text-gray-400 text-sm">Nessun movimento recente.</div>';
+                divStorico.innerHTML = '<div class="text-center py-6 text-gray-400 text-sm">Nessun movimento registrato.</div>';
                 return;
             }
 
             data.forEach(m => {
                 const nomeArticolo = mappaArticoli[m.codice_articolo] || m.codice_articolo;
-                // Formatta la data: es. 28/01
-                const dataOp = new Date(m.data_operazione).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
+                // Formatta la data: es. 28/01/2026
+                const dataOp = new Date(m.data_operazione).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' });
                 
                 const isConsegna = m.tipo === 'CONSEGNA';
                 const tagClass = isConsegna ? 'bg-consegna' : 'bg-reso';
-                const icona = isConsegna ? '⬇️' : '⬆️';
                 
                 // Card singola per lo storico
                 const html = `
                 <div class="history-item">
-                    <div class="flex flex-col items-center justify-center w-12 border-r border-gray-100 pr-2 mr-3">
-                        <span class="text-gray-500 font-bold text-xs">${dataOp}</span>
+                    <div class="flex flex-col items-center justify-center w-14 border-r border-gray-100 pr-2 mr-3">
+                        <span class="text-gray-500 font-bold text-xs whitespace-nowrap">${dataOp}</span>
                         <span class="${tagClass} tag-tipo mt-1 text-[9px]">${isConsegna ? 'CONS' : 'RESO'}</span>
                     </div>
 
                     <div class="flex-1 overflow-hidden">
-                        <p class="text-xs text-gray-400 font-bold">${m.codice_articolo}</p>
-                        <p class="text-sm text-gray-800 truncate font-medium">${nomeArticolo}</p>
+                        <div class="flex items-center">
+                             <span class="text-[10px] text-gray-400 font-bold mr-2">${m.codice_articolo}</span>
+                        </div>
+                        <p class="text-sm text-gray-800 truncate font-medium leading-tight">${nomeArticolo}</p>
                     </div>
 
-                    <div class="flex items-center gap-3 pl-2">
-                        <span class="text-base font-bold text-gray-700">${m.quantita}</span>
+                    <div class="flex items-center gap-2 pl-2">
+                        <span class="text-base font-bold text-gray-700 w-8 text-right">${m.quantita}</span>
                         <button onclick="eliminaMovimento(${m.id})" class="text-gray-300 hover:text-red-500 p-2">
                             <i data-lucide="trash-2" class="w-4 h-4"></i>
                         </button>
